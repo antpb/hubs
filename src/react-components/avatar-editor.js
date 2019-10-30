@@ -14,6 +14,13 @@ import styles from "../assets/stylesheets/avatar-editor.scss";
 
 const AVATARS_API = "/api/v1/avatars";
 
+const defaultEditors = [
+  {
+    name: "Quilt",
+    url: "https://tryquilt.io/?gltf=$AVATAR_GLTF"
+  }
+];
+
 const fetchAvatar = async avatarId => {
   const { avatars } = await fetchReticulumAuthenticated(`${AVATARS_API}/${avatarId}`);
   return avatars[0];
@@ -33,6 +40,7 @@ export default class AvatarEditor extends Component {
 
   state = {
     baseAvatarResults: [],
+    editorLinks: defaultEditors,
     previewGltfUrl: null
   };
 
@@ -403,6 +411,16 @@ export default class AvatarEditor extends Component {
     </div>
   );
 
+  handleGltfLoaded = gltf => {
+    const json = gltf.parser.json;
+    if (json.extensionsUsed && json.extensionsUsed.indexOf("MOZ_hubs_avatar") !== -1) {
+      const hubsAvatarMeta = json.extensions["MOZ_hubs_avatar"];
+      this.setState({ editorLinks: hubsAvatarMeta.editors || defaultEditors });
+    } else {
+      this.setState({ editorLinks: defaultEditors });
+    }
+  };
+
   render() {
     const { debug } = this.props;
     const { avatar } = this.state;
@@ -483,6 +501,7 @@ export default class AvatarEditor extends Component {
               <AvatarPreview
                 className="preview"
                 avatarGltfUrl={this.state.previewGltfUrl}
+                onGltfLoaded={this.handleGltfLoaded}
                 {...this.inputFiles}
                 ref={p => (this.preview = p)}
               />
@@ -490,9 +509,16 @@ export default class AvatarEditor extends Component {
             <div className="info">
               <p>
                 <FormattedMessage id="avatar-editor.external-editor-info" />
-                <a target="_blank" rel="noopener noreferrer" href="https://tryquilt.io/">
-                  Quilt
-                </a>
+                {this.state.editorLinks.map(({ name, url }) => (
+                  <a
+                    key={name}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href={url.replace("$AVATAR_GLTF", this.state.previewGltfUrl)}
+                  >
+                    {name}
+                  </a>
+                ))}
               </p>
               <p>
                 <FormattedMessage id="avatar-editor.info" />
