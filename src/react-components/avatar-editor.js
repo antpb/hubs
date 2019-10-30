@@ -489,8 +489,9 @@ export default class AvatarEditor extends Component {
             </div>
             <div className="info">
               <p>
+                <FormattedMessage id="avatar-editor.external-editor-info" />
                 <a target="_blank" rel="noopener noreferrer" href="https://tryquilt.io/">
-                  <FormattedMessage id="avatar-editor.quilt-link" />
+                  Quilt
                 </a>
               </p>
               <p>
