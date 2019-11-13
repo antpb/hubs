@@ -26,11 +26,7 @@ function getThemeColor(name) {
 
 waitForDOMContentLoaded().then(() => {
   console.log(window.APP_CONFIG);
-  if (window.APP_CONFIG && window.APP_CONFIG.theme && window.APP_CONFIG.theme["dark-theme"]) {
-    document.body.classList.add("dark-theme");
-  } else {
-    document.body.classList.add("light-theme");
-  }
+  document.body.classList.add("dark-theme");
 
   const actionColor = getThemeColor("action-color");
   const actionHoverColor = getThemeColor("action-color-highlight");

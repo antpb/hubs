@@ -48,7 +48,7 @@ do_build() {
   mv dist/hub.service.js dist/pages
   mv dist/schema.toml dist/pages
   mv dist/favicon.ico dist/pages
-  mv dist/app-thumbnail.png dist/pages
+  mv dist/app-thumbnail.jpg dist/pages
   mv dist/app-icon.png dist/pages
 }
 
