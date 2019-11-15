@@ -28,6 +28,7 @@ waitForDOMContentLoaded().then(() => {
   console.log(window.APP_CONFIG);
   document.body.classList.add("dark-theme");
 
+
   const actionColor = getThemeColor("action-color");
   const actionHoverColor = getThemeColor("action-color-highlight");
 

@@ -36,10 +36,8 @@
 }
 
 .loading-panel__logo {
-  width: 247px;
-  height: 57px;
+  max-height: 200px;
   margin: 20px 0 10px 0;
-  filter: drop-shadow(0 0 4px #888);
 }
 
 .loader-center,

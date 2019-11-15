@@ -10,7 +10,6 @@ import { lang, messages } from "../utils/i18n";
 import { playVideoWithStopOnBlur } from "../utils/video-utils.js";
 import homeVideoWebM from "../assets/video/home.webm";
 import homeVideoMp4 from "../assets/video/home.mp4";
-import hubLogo from "../assets/images/hub-preview-light-no-shadow.png";
 import bpLogo from "../assets/images/bp.png";
 import discordLogoSmall from "../assets/images/discord-logo-small.png";
 import mozLogo from "../assets/images/moz-logo-black.png";
@@ -397,9 +396,6 @@ class HomeRoot extends Component {
         <div className={styles.container}>
           <div className={styles.logoContainer}>
             <div className={classNames([styles.logo, styles.logoMargin])}>
-              <img src={configs.image("logo", hubLogo)} />
-            </div>
-            <div className={classNames([styles.logo, styles.logoMargin])}>
               <img src={configs.image("bp_logo", bpLogo)} />
             </div>
           </div>
@@ -424,9 +420,6 @@ class HomeRoot extends Component {
       <div className={styles.heroPanel}>
         <div className={styles.container}>
           <div className={styles.logoContainer}>
-            <div className={styles.logo}>
-              <img src={configs.image("logo", hubLogo)} />
-            </div>
             <div className={styles.logo}>
               <img src={configs.image("bp_logo", bpLogo)} />
             </div>
