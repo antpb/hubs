@@ -35,7 +35,24 @@ const farsparkEncodeUrl = url => {
 };
 
 export const scaledThumbnailUrlFor = (url, width, height) => {
-  const farsparkUrl = `https://${configs.THUMBNAIL_SERVER}/thumbnail/${farsparkEncodeUrl(url)}?w=${width}&h=${height}`;
+  let extension = "";
+  try {
+    const pathParts = new URL(url).pathname.split(".");
+
+    if (pathParts.length > 1) {
+      const extensionCandidate = pathParts.pop();
+      if (commonKnownContentTypes[extensionCandidate]) {
+        extension = `.${extensionCandidate}`;
+      }
+    }
+  } catch (e) {
+    extension = ".png";
+  }
+
+  // HACK: the extension is needed to ensure CDN caching on Cloudflare
+  const thumbnailUrl = `https://${configs.THUMBNAIL_SERVER}/thumbnail/${farsparkEncodeUrl(
+    url
+  )}${extension}?w=${width}&h=${height}`;
 
   try {
     const urlHostname = new URL(url).hostname;
@@ -45,10 +62,10 @@ export const scaledThumbnailUrlFor = (url, width, height) => {
       if (retHostname === urlHostname) return url;
     }
   } catch (e) {
-    return farsparkUrl;
+    return thumbnailUrl;
   }
 
-  return farsparkUrl;
+  return thumbnailUrl;
 };
 
 export const isNonCorsProxyDomain = hostname => {
@@ -115,14 +132,42 @@ export const guessContentType = url => {
   const extension = new URL(url, window.location).pathname.split(".").pop();
   return commonKnownContentTypes[extension];
 };
-const hubsSceneRegex = /https?:\/\/(hubs\.local(:\d+)?|(smoke-)?hubs\.mozilla\.com|(dev\.)?reticulum\.io)\/scenes\/(\w+)\/?\S*/;
-const hubsAvatarRegex = /https?:\/\/(hubs\.local(:\d+)?|(smoke-)?hubs\.mozilla\.com|(dev\.)?reticulum\.io)\/avatars\/(?<id>\w+)\/?\S*/;
-const hubsRoomRegex = /(https?:\/\/)?(hub\.link)|(hubs\.local(:\d+)?|(smoke-)?hubs\.mozilla\.com|(dev\.)?reticulum\.io)\/([a-zA-Z0-9]{7})\/?\S*/;
 
-export const isHubsSceneUrl = hubsSceneRegex.test.bind(hubsSceneRegex);
-export const isHubsRoomUrl = url => !isHubsSceneUrl(url) && hubsRoomRegex.test(url);
-export const isHubsDestinationUrl = url => isHubsSceneUrl(url) || isHubsRoomUrl(url);
-export const isHubsAvatarUrl = hubsAvatarRegex.test.bind(hubsAvatarRegex);
+const originIsHubsServer = new Map();
+async function isHubsServer(url) {
+  if (!url) return false;
+  if (!url.startsWith("http")) {
+    url = "https://" + url;
+  }
+  const { origin } = new URL(url);
+
+  if (originIsHubsServer.has(origin)) {
+    return originIsHubsServer.get(origin);
+  }
+
+  let isHubsServer;
+  try {
+    isHubsServer = (await fetch(origin, { method: "HEAD" })).headers.has("hub-name");
+  } catch (e) {
+    isHubsServer = false;
+  }
+  originIsHubsServer.set(origin, isHubsServer);
+  return isHubsServer;
+}
+
+const hubsSceneRegex = /https?:\/\/[^/]+\/scenes\/(\w+)\/?\S*/;
+const hubsAvatarRegex = /https?:\/\/[^/]+\/avatars\/(?<id>\w+)\/?\S*/;
+const hubsRoomRegex = /(https?:\/\/)?[^/]+\/([a-zA-Z0-9]{7})\/?\S*/;
+
+export const isHubsSceneUrl = async url => (await isHubsServer(url)) && hubsSceneRegex.test(url);
+
+export const isHubsRoomUrl = async url =>
+  (await isHubsServer(url)) && !(await isHubsSceneUrl(url)) && hubsRoomRegex.test(url);
+
+export const isHubsDestinationUrl = async url =>
+  (await isHubsServer(url)) && ((await isHubsSceneUrl(url)) || (await isHubsRoomUrl(url)));
+
+export const isHubsAvatarUrl = async url => (await isHubsServer(url)) && hubsAvatarRegex.test(url);
 
 export const idForAvatarUrl = url => {
   const match = url.match(hubsAvatarRegex);

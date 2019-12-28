@@ -1,12 +1,13 @@
+import "./webxr-bypass-hacks";
 import "./utils/configs";
 import "./utils/theme";
 import "@babel/polyfill";
 import "./utils/debug-log";
 
-console.log(`Hubs version: ${process.env.BUILD_VERSION || "?"}`);
+console.log(`App version: ${process.env.BUILD_VERSION || "?"}`);
 
 import "./assets/stylesheets/hub.scss";
-import happyEmoji from "./assets/images/chest-emojis/screen-effect/happy.png";
+import initialBatchImage from "./assets/images/warning_icon.png";
 import loadingEnvironment from "./assets/models/LoadingEnvironment.glb";
 
 import "aframe";
@@ -24,7 +25,7 @@ import "./utils/audio-context-fix";
 import "./utils/threejs-positional-audio-updatematrixworld";
 import "./utils/threejs-world-update";
 import patchThreeAllocations from "./utils/threejs-allocation-patches";
-import { detectOS, detect } from "detect-browser";
+import { detectOS } from "detect-browser";
 import {
   getReticulumFetchUrl,
   getReticulumMeta,
@@ -38,15 +39,16 @@ import { authorizeOrSanitizeMessage } from "./utils/permissions-utils";
 import Cookies from "js-cookie";
 
 import "./components/scene-components";
+import "./components/scale-in-screen-space";
 import "./components/mute-mic";
 import "./components/bone-mute-state-indicator";
 import "./components/bone-visibility";
 import "./components/in-world-hud";
+import "./components/emoji";
 import "./components/emoji-hud";
 import "./components/virtual-gamepad-controls";
 import "./components/ik-controller";
 import "./components/hand-controls2";
-import "./components/character-controller";
 import "./components/hoverable-visuals";
 import "./components/hover-visuals";
 import "./components/offset-relative-to";
@@ -105,6 +107,7 @@ import "./components/hubs-text";
 import "./components/billboard";
 import "./components/periodic-full-syncs";
 import "./components/inspect-button";
+import "./components/set-max-resolution";
 import { sets as userinputSets } from "./systems/userinput/sets";
 
 import ReactDOM from "react-dom";
@@ -133,6 +136,8 @@ import "./systems/personal-space-bubble";
 import "./systems/app-mode";
 import "./systems/permissions";
 import "./systems/exit-on-blur";
+import "./systems/auto-pixel-ratio";
+import "./systems/idle-detector";
 import "./systems/camera-tools";
 import "./systems/userinput/userinput";
 import "./systems/userinput/userinput-debug";
@@ -172,9 +177,17 @@ if (isEmbed && !qs.get("embed_token")) {
 }
 
 THREE.Object3D.DefaultMatrixAutoUpdate = false;
-window.APP.quality = qs.get("quality") || (isMobile || isMobileVR) ? "low" : "high";
+window.APP.quality =
+  window.APP.store.state.preferences.materialQualitySetting === "low"
+    ? "low"
+    : window.APP.store.state.preferences.materialQualitySetting === "high"
+      ? "high"
+      : isMobile || isMobileVR
+        ? "low"
+        : "high";
 
 import "./components/owned-object-limiter";
+import "./components/owned-object-cleanup-timeout";
 import "./components/set-unowned-body-kinematic";
 import "./components/scalable-when-grabbed";
 import "./components/networked-counter";
@@ -197,8 +210,8 @@ import registerNetworkSchemas from "./network-schemas";
 import registerTelemetry from "./telemetry";
 import { warmSerializeElement } from "./utils/serialize-element";
 
-import { getAvailableVREntryTypes, VR_DEVICE_AVAILABILITY } from "./utils/vr-caps-detect.js";
-import detectConcurrentLoad from "./utils/concurrent-load-detector.js";
+import { getAvailableVREntryTypes, VR_DEVICE_AVAILABILITY } from "./utils/vr-caps-detect";
+import detectConcurrentLoad from "./utils/concurrent-load-detector";
 
 import qsTruthy from "./utils/qs_truthy";
 
@@ -259,7 +272,8 @@ const qsVREntryType = qs.get("vr_entry_type");
 
 function mountUI(props = {}) {
   const scene = document.querySelector("a-scene");
-  const disableAutoExitOnConcurrentLoad = qsTruthy("allow_multi");
+  const disableAutoExitOnIdle =
+    qsTruthy("allow_idle") || (process.env.NODE_ENV === "development" && !qs.get("idle_timeout"));
   const isCursorHoldingPen =
     scene &&
     (scene.systems.userinput.activeSets.includes(userinputSets.rightCursorHoldingPen) ||
@@ -275,7 +289,7 @@ function mountUI(props = {}) {
             {...{
               scene,
               isBotMode,
-              disableAutoExitOnConcurrentLoad,
+              disableAutoExitOnIdle,
               forcedVREntryType,
               store,
               mediaSearchStore,
@@ -307,7 +321,7 @@ async function updateUIForHub(hub) {
   });
 }
 
-async function updateEnvironmentForHub(hub) {
+async function updateEnvironmentForHub(hub, entryManager) {
   let sceneUrl;
   let isLegacyBundle; // Deprecated
 
@@ -345,27 +359,40 @@ async function updateEnvironmentForHub(hub) {
 
   if (environmentScene.childNodes.length === 0) {
     const environmentEl = document.createElement("a-entity");
-    environmentEl.setAttribute("gltf-model-plus", { src: sceneUrl, useCache: false, inflate: true });
 
-    environmentScene.appendChild(environmentEl);
+    const sceneErrorHandler = () => {
+      remountUI({ roomUnavailableReason: "scene_error" });
+      entryManager.exitScene();
+    };
 
     environmentEl.addEventListener(
       "model-loaded",
       () => {
+        environmentEl.removeEventListener("model-error", sceneErrorHandler);
+
         // Show the canvas once the model has loaded
         document.querySelector(".a-canvas").classList.remove("a-hidden");
+
+        sceneEl.addState("visible");
 
         //TODO: check if the environment was made with spoke to determine if a shape should be added
         traverseMeshesAndAddShapes(environmentEl);
       },
       { once: true }
     );
+
+    environmentEl.addEventListener("model-error", sceneErrorHandler, { once: true });
+
+    environmentEl.setAttribute("gltf-model-plus", { src: sceneUrl, useCache: false, inflate: true });
+    environmentScene.appendChild(environmentEl);
   } else {
     // Change environment
     environmentEl = environmentScene.childNodes[0];
 
     // Clear the three.js image cache and load the loading environment before switching to the new one.
     THREE.Cache.clear();
+    const waypointSystem = sceneEl.systems["hubs-systems"].waypointSystem;
+    waypointSystem.releaseAnyOccupiedWaypoints();
 
     environmentEl.addEventListener(
       "model-loaded",
@@ -377,7 +404,7 @@ async function updateEnvironmentForHub(hub) {
 
             // We've already entered, so move to new spawn point once new environment is loaded
             if (sceneEl.is("entered")) {
-              document.querySelector("#avatar-rig").components["spawn-controller"].moveToSpawnPoint();
+              waypointSystem.moveToSpawnPoint();
             }
           },
           { once: true }
@@ -528,7 +555,7 @@ function handleHubChannelJoined(entryManager, hubChannel, messageDispatch, data)
     });
 
     const loadEnvironmentAndConnect = () => {
-      updateEnvironmentForHub(hub);
+      updateEnvironmentForHub(hub, entryManager);
 
       scene.components["networked-scene"]
         .connect()
@@ -599,18 +626,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // HACK: On Safari for iOS & MacOS, if mic permission is not granted, subscriber webrtc negotiation fails.
-  // So we need to insist on microphone grants to continue.
-  const browser = detect();
-  if (["iOS", "Mac OS"].includes(detectedOS) && ["safari", "ios"].includes(browser.name)) {
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (e) {
-      remountUI({ showSafariMicDialog: true });
-      return;
-    }
-  }
-
   const hubId = qs.get("hub_id") || document.location.pathname.substring(1).split("/")[0];
   console.log(`Hub ID: ${hubId}`);
 
@@ -639,7 +654,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // HACK - Trigger initial batch preparation with an invisible object
   scene
     .querySelector("#batch-prep")
-    .setAttribute("media-image", { batch: true, src: happyEmoji, contentType: "image/png" });
+    .setAttribute("media-image", { batch: true, src: initialBatchImage, contentType: "image/png" });
 
   const onSceneLoaded = () => {
     const physicsSystem = scene.systems["hubs-systems"].physicsSystem;
@@ -933,7 +948,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     remountUI({ availableVREntryTypes, forcedVREntryType: "vr" });
 
     if (/Oculus/.test(navigator.userAgent)) {
-      // HACK - The polyfill reports Cardboard as the primary VR display on startup out ahead of Oculus Go on Oculus Browser 5.5.0 beta. This display is cached by A-Frame,
+      // HACK - The polyfill reports Cardboard as the primary VR display on startup out ahead of
+      // Oculus Go on Oculus Browser 5.5.0 beta. This display is cached by A-Frame,
       // so we need to resolve that and get the real VRDisplay before entering as well.
       const displays = await navigator.getVRDisplays();
       const vrDisplay = displays.length && displays[0];
@@ -1388,7 +1404,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     updateUIForHub(hub);
 
     if (stale_fields.includes("scene")) {
-      updateEnvironmentForHub(hub);
+      updateEnvironmentForHub(hub, entryManager);
 
       addToPresenceLog({
         type: "scene_changed",

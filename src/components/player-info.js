@@ -3,15 +3,6 @@ import { AVATAR_TYPES } from "../utils/avatar-utils";
 import { registerComponentInstance } from "../utils/component-utils";
 import { deregisterComponentInstance } from "../utils/component-utils";
 
-import happyEmoji from "../assets/images/chest-emojis/screen-effect/happy.png";
-import sadEmoji from "../assets/images/chest-emojis/screen-effect/sad.png";
-import angryEmoji from "../assets/images/chest-emojis/screen-effect/angry.png";
-import ewwEmoji from "../assets/images/chest-emojis/screen-effect/eww.png";
-import disgustEmoji from "../assets/images/chest-emojis/screen-effect/disgust.png";
-import heartsEmoji from "../assets/images/chest-emojis/screen-effect/hearts.png";
-import smileEmoji from "../assets/images/chest-emojis/screen-effect/smile.png";
-import surpriseEmoji from "../assets/images/chest-emojis/screen-effect/surprise.png";
-
 function ensureAvatarNodes(json) {
   const { nodes } = json;
   if (!nodes.some(node => node.name === "Head")) {
@@ -36,16 +27,7 @@ function ensureAvatarNodes(json) {
   }
   return json;
 }
-const emojiTypeToImage = {
-  happy: happyEmoji,
-  sad: sadEmoji,
-  angry: angryEmoji,
-  smile: smileEmoji,
-  surprise: surpriseEmoji,
-  eww: ewwEmoji,
-  hearts: heartsEmoji,
-  disgust: disgustEmoji
-};
+
 /**
  * Sets player info state, including avatar choice and display name.
  * @namespace avatar
@@ -54,8 +36,7 @@ const emojiTypeToImage = {
 AFRAME.registerComponent("player-info", {
   schema: {
     avatarSrc: { type: "string" },
-    avatarType: { type: "string", default: AVATAR_TYPES.SKINNABLE },
-    emojiType: { type: "string", default: null }
+    avatarType: { type: "string", default: AVATAR_TYPES.SKINNABLE }
   },
   init() {
     this.displayName = null;
@@ -66,6 +47,7 @@ AFRAME.registerComponent("player-info", {
     this.updateDisplayName = this.updateDisplayName.bind(this);
     this.applyDisplayName = this.applyDisplayName.bind(this);
     this.handleModelError = this.handleModelError.bind(this);
+    this.update = this.update.bind(this);
 
     this.isLocalPlayerInfo = this.el.id === "avatar-rig";
     this.playerSessionId = null;
@@ -85,40 +67,25 @@ AFRAME.registerComponent("player-info", {
     deregisterComponentInstance(this, "player-info");
   },
   play() {
-    this.el.sceneEl.addEventListener("change_emoji", this.changeEmoji);
     this.el.addEventListener("model-loaded", this.applyProperties);
     this.el.sceneEl.addEventListener("presence_updated", this.updateDisplayName);
     if (this.isLocalPlayerInfo) {
       this.el.querySelector(".model").addEventListener("model-error", this.handleModelError);
     }
+    window.APP.store.addEventListener("statechanged", this.update);
+
+    this.el.sceneEl.addEventListener("stateadded", this.update);
+    this.el.sceneEl.addEventListener("stateremoved", this.update);
   },
   pause() {
-    this.el.sceneEl.removeEventListener("change_emoji", this.changeEmoji);
     this.el.removeEventListener("model-loaded", this.applyProperties);
     this.el.sceneEl.removeEventListener("presence_updated", this.updateDisplayName);
     if (this.isLocalPlayerInfo) {
       this.el.querySelector(".model").removeEventListener("model-error", this.handleModelError);
     }
-  },
-
-  applyEmoji() {
-    const avatarImage = this.el.querySelector(".chest-image");
-    if (!avatarImage) return;
-    const emojiType = this.data.emojiType;
-    const emojiImage = emojiTypeToImage[emojiType];
-    if (emojiType === "empty") {
-      avatarImage.removeAttribute("media-image");
-      avatarImage.removeAttribute("media-loader");
-      avatarImage.removeObject3D("mesh");
-    } else if (emojiType !== null) {
-      avatarImage.setAttribute("media-loader", {
-        playSoundEffect: this.isLocalPlayerInfo,
-        src: new URL(emojiImage, window.location.href).href
-      });
-    }
-    if (this.isLocalPlayerInfo) {
-      this.el.emit("emoji_changed", { emojiType }, false);
-    }
+    this.el.sceneEl.removeEventListener("stateadded", this.update);
+    this.el.sceneEl.removeEventListener("stateremoved", this.update);
+    window.APP.store.removeEventListener("statechanged", this.update);
   },
 
   update() {
@@ -141,27 +108,31 @@ AFRAME.registerComponent("player-info", {
     this.applyDisplayName();
   },
   applyDisplayName() {
+    const infoShouldBeHidden =
+      window.APP.store.state.preferences.onlyShowNametagsInFreeze && !this.el.sceneEl.is("frozen");
     const nametagEl = this.el.querySelector(".nametag");
     if (this.displayName && nametagEl) {
       nametagEl.setAttribute("text", { value: this.displayName });
+      nametagEl.object3D.visible = !infoShouldBeHidden;
     }
     const communityIdentifierEl = this.el.querySelector(".communityIdentifier");
     if (communityIdentifierEl) {
       if (this.communityIdentifier) {
         communityIdentifierEl.setAttribute("text", { value: this.communityIdentifier });
+        communityIdentifierEl.object3D.visible = !infoShouldBeHidden;
       }
     }
     const recordingBadgeEl = this.el.querySelector(".recordingBadge");
     if (recordingBadgeEl) {
-      recordingBadgeEl.object3D.visible = this.isRecording;
+      recordingBadgeEl.object3D.visible = this.isRecording && !infoShouldBeHidden;
     }
 
     const modBadgeEl = this.el.querySelector(".modBadge");
     if (modBadgeEl) {
-      modBadgeEl.object3D.visible = !this.isRecording && this.isOwner;
+      modBadgeEl.object3D.visible = !this.isRecording && this.isOwner && !infoShouldBeHidden;
     }
   },
-  applyProperties() {
+  applyProperties(e) {
     this.applyDisplayName();
 
     const modelEl = this.el.querySelector(".model");
@@ -170,11 +141,12 @@ AFRAME.registerComponent("player-info", {
       modelEl.setAttribute("gltf-model-plus", "src", this.data.avatarSrc);
     }
 
-    const uniforms = injectCustomShaderChunks(this.el.object3D);
-    this.el.querySelectorAll("[hover-visuals]").forEach(el => {
-      el.components["hover-visuals"].uniforms = uniforms;
-    });
-    this.applyEmoji();
+    if (!e || e.target === modelEl) {
+      const uniforms = injectCustomShaderChunks(this.el.object3D);
+      this.el.querySelectorAll("[hover-visuals]").forEach(el => {
+        el.components["hover-visuals"].uniforms = uniforms;
+      });
+    }
   },
   handleModelError() {
     window.APP.store.resetToRandomDefaultAvatar();

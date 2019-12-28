@@ -124,6 +124,35 @@ function registerNetworkSchemas() {
   });
 
   NAF.schemas.add({
+    template: "#interactable-emoji-media",
+    components: [
+      {
+        component: "position",
+        requiresNetworkUpdate: vectorRequiresUpdate(0.001)
+      },
+      {
+        component: "rotation",
+        requiresNetworkUpdate: vectorRequiresUpdate(0.5)
+      },
+      {
+        component: "emoji",
+        property: "emitEndTime"
+      },
+      {
+        component: "emoji",
+        property: "particleEmitterConfig"
+      },
+      "scale",
+      "media-loader",
+      "pinnable",
+      {
+        selector: ".particle-emitter",
+        component: "particle-emitter"
+      }
+    ]
+  });
+
+  NAF.schemas.add({
     template: "#static-media",
     components: [
       // TODO: Optimize checking mediaOptions with requiresNetworkUpdate.
@@ -212,6 +241,40 @@ function registerNetworkSchemas() {
   });
 
   NAF.schemas.add({
+    template: "#template-waypoint-avatar",
+    components: [
+      {
+        component: "position",
+        requiresNetworkUpdate: vectorRequiresUpdate(0.001)
+      },
+      {
+        component: "rotation",
+        requiresNetworkUpdate: vectorRequiresUpdate(0.5)
+      },
+      {
+        component: "scale",
+        requiresNetworkUpdate: vectorRequiresUpdate(0.001)
+      },
+      "waypoint"
+    ],
+    nonAuthorizedComponents: [
+      {
+        component: "position",
+        requiresNetworkUpdate: vectorRequiresUpdate(0.001)
+      },
+      {
+        component: "rotation",
+        requiresNetworkUpdate: vectorRequiresUpdate(0.5)
+      },
+      {
+        component: "scale",
+        requiresNetworkUpdate: vectorRequiresUpdate(0.001)
+      },
+      "waypoint"
+    ]
+  });
+
+  NAF.schemas.add({
     template: "#interactable-pen",
     components: [
       {
@@ -246,7 +309,7 @@ function registerNetworkSchemas() {
       {
         selector: "#pen",
         component: "pen-laser",
-        property: "remoteLaserVisible"
+        property: "laserVisible"
       },
       {
         selector: "#pen",

@@ -1,3 +1,8 @@
+import appLogo from "../assets/images/app-logo.png";
+import companyLogo from "../assets/images/company-logo.png";
+import sceneEditorLogo from "../assets/images/editor-logo.png";
+import pdfjs from "pdfjs-dist";
+
 // Read configs from global variable if available, otherwise use the process.env injected from build.
 const configs = {};
 let isAdmin = false;
@@ -9,6 +14,7 @@ let isAdmin = false;
   "NON_CORS_PROXY_DOMAINS",
   "SENTRY_DSN",
   "GA_TRACKING_ID",
+  "SHORTLINK_DOMAIN",
   "BASE_ASSETS_PATH"
 ].forEach(x => {
   const el = document.querySelector(`meta[name='env:${x.toLowerCase()}']`);
@@ -17,6 +23,9 @@ let isAdmin = false;
   if (x === "BASE_ASSETS_PATH" && configs[x]) {
     // eslint-disable-next-line no-undef
     __webpack_public_path__ = configs[x];
+
+    // Using external CDN to reduce build size
+    pdfjs.GlobalWorkerOptions.workerSrc = `${configs[x]}../assets/js/pdfjs-dist@2.1.266/build/pdf.worker.js`;
   }
 });
 
@@ -39,8 +48,9 @@ if (window.APP_CONFIG) {
   }
 }
 
+const isLocalDevelopment = process.env.NODE_ENV === "development";
+
 configs.feature = featureName => {
-  const isLocalDevelopment = process.env.NODE_ENV === "development";
   const enableAll = isLocalDevelopment && !process.env.USE_FEATURE_CONFIG;
 
   const features = configs.APP_CONFIG && configs.APP_CONFIG.features;
@@ -50,8 +60,19 @@ configs.feature = featureName => {
   return forceEnableSpoke || enableAll || (features && features[featureName]);
 };
 
-configs.image = (imageName, defaultImage, cssUrl) => {
-  const url = (configs.APP_CONFIG && configs.APP_CONFIG.images && configs.APP_CONFIG.images[imageName]) || defaultImage;
+let localDevImages = {};
+if (isLocalDevelopment) {
+  localDevImages = {
+    logo: appLogo,
+    company_logo: companyLogo,
+    editor_logo: sceneEditorLogo
+  };
+}
+
+configs.image = (imageName, cssUrl) => {
+  const url =
+    (configs.APP_CONFIG && configs.APP_CONFIG.images && configs.APP_CONFIG.images[imageName]) ||
+    localDevImages[imageName];
   return url && cssUrl ? `url(${url})` : url;
 };
 

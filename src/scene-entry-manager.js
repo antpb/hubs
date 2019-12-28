@@ -1,9 +1,11 @@
 import qsTruthy from "./utils/qs_truthy";
 import nextTick from "./utils/next-tick";
 import pinnedEntityToGltf from "./utils/pinned-entity-to-gltf";
+import { hackyMobileSafariTest } from "./utils/detect-touchscreen";
 
 const isBotMode = qsTruthy("bot");
 const isMobile = AFRAME.utils.device.isMobile();
+const forceEnableTouchscreen = hackyMobileSafariTest();
 const isMobileVR = AFRAME.utils.device.isMobileVR();
 const isDebug = qsTruthy("debug");
 const qs = new URLSearchParams(location.search);
@@ -51,6 +53,8 @@ export default class SceneEntryManager {
 
   enterScene = async (mediaStream, enterInVR, muteOnEntry) => {
     document.getElementById("viewing-camera").removeAttribute("scene-preview-camera");
+    const waypointSystem = this.scene.systems["hubs-systems"].waypointSystem;
+    waypointSystem.moveToSpawnPoint();
 
     if (isDebug) {
       NAF.connection.adapter.session.options.verbose = true;
@@ -68,7 +72,7 @@ export default class SceneEntryManager {
       await exit2DInterstitialAndEnterVR(true);
     }
 
-    if (isMobile || qsTruthy("mobile")) {
+    if (isMobile || forceEnableTouchscreen || qsTruthy("mobile")) {
       this.avatarRig.setAttribute("virtual-gamepad-controls", {});
     }
 
@@ -86,6 +90,7 @@ export default class SceneEntryManager {
 
     if (isBotMode) {
       this._runBot(mediaStream);
+      this.scene.addState("entered");
       return;
     }
 

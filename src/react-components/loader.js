@@ -1,16 +1,17 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { IntlProvider, FormattedMessage } from "react-intl";
+import UnlessFeature from "./unless-feature";
 
 import configs from "../utils/configs";
 import { lang, messages } from "../utils/i18n";
 import loaderStyles from "../assets/stylesheets/loader.scss";
-import hubLogo from "../assets/images/hub-preview-light-no-shadow.png";
 
 class Loader extends Component {
   static propTypes = {
     scene: PropTypes.object,
     finished: PropTypes.bool,
+    connected: PropTypes.bool,
     onLoaded: PropTypes.func
   };
 
@@ -98,12 +99,33 @@ class Loader extends Component {
         ...
       </h4>
     );
+    const connected = (
+      <h4 className={loaderStyles.loadingText}>
+        <FormattedMessage id="loader.connected" />
+      </h4>
+    );
+    const connecting = (
+      <h4 className={loaderStyles.loadingText}>
+        <FormattedMessage id="loader.connecting" />
+      </h4>
+    );
     return (
       <IntlProvider locale={lang} messages={messages}>
         <div className="loading-panel">
-          <img className="loading-panel__logo" src={configs.image("logo", hubLogo)} />
+          <img className="loading-panel__logo" src={configs.image("logo")} />
+          <UnlessFeature name="hide_powered_by">
+            <div className="loading-panel__powered-by">
+              <span className="loading-panel__powered-by__prefix">
+                <FormattedMessage id="home.powered_by_prefix" />
+              </span>
+              <a href="https://github.com/mozilla/hubs-cloud">
+                <FormattedMessage id="home.powered_by_link" />
+              </a>
+            </div>
+          </UnlessFeature>
 
           {this.props.finished ? nomore : usual}
+          {this.props.connected ? connected : connecting}
 
           <div className="loader-wrap loader-bottom">
             <div className="loader">

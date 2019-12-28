@@ -7,6 +7,7 @@ const HAND_OFFSET = new THREE.Matrix4().compose(
   new THREE.Quaternion().setFromEuler(new THREE.Euler(-40 * THREE.Math.DEG2RAD, 0, 0)),
   new THREE.Vector3(1, 1, 1)
 );
+const m = new THREE.Matrix4();
 
 export class WindowsMixedRealityControllerDevice {
   constructor(gamepad) {
@@ -31,8 +32,9 @@ export class WindowsMixedRealityControllerDevice {
     this.orientation = new THREE.Quaternion();
   }
   write(frame) {
+    if (!this.gamepad) return;
     this.gamepad = navigator.getGamepads()[this.gamepad.index];
-    if (!this.gamepad.connected) return;
+    if (!this.gamepad || !this.gamepad.connected) return;
 
     const path = paths.device.wmr[this.gamepad.hand || "right"];
 
@@ -64,7 +66,7 @@ export class WindowsMixedRealityControllerDevice {
 
     this.rayObject = this.rayObject || document.querySelector(this.selector).object3D;
     this.rayObject.updateMatrixWorld();
-    this.rayObjectRotation.setFromRotationMatrix(this.rayObject.matrixWorld);
+    this.rayObjectRotation.setFromRotationMatrix(m.extractRotation(this.rayObject.matrixWorld));
 
     this.pose.position.setFromMatrixPosition(this.rayObject.matrixWorld);
     this.pose.direction.set(0, 0, -1).applyQuaternion(this.rayObjectRotation);

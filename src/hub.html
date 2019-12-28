@@ -12,24 +12,8 @@
     <link rel="manifest" href="/manifest.webmanifest">
     <!-- iOS (for "Add to Homescreen") -->
     <meta name="mobile-web-app-capable" content="yes">
-    <!-- Microsoft Edge (Windows) -->
-    <meta name="application-name" content="Hubs">
-    <title>Room | Hubs by Mozilla</title>
+    <title>Room | App by Company</title>
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700" rel="stylesheet">
-    <script>
-        // HACK Chrome on iOS breaks completely if we don't do this because a-frame's webvr-polyfill doesn't recognize
-        // Google Chrome on iOS correctly. We can remove this when we upgrade a-frame past 0.8.2.
-        if (!window.WebVRConfig) { window.WebVRConfig = {}; }
-    </script>
-    <script>
-        /*
-        HACK Another hack to fix a-frame's device detection in Chrome when WebXR or WebVR flags are enabled in
-        chrome://flags. See https://github.com/mozilla/hubs/issues/892
-        */
-        if (navigator.xr && !navigator.xr.requestDevice) {
-            navigator.xr.requestDevice = () => Promise.reject({message: "Hubs: requestDevice not supported."});
-        }
-    </script>
     <!-- Google Analytics -->
     <!-- NOTE GA tracking is disabled by default. You'll need to set the GA_TRACKING_ID build variable to enable it. -->
     <script>
@@ -50,7 +34,15 @@
         capture-system
         local-audio-analyser
         class="grab-cursor"
-        renderer="antialias: true; colorManagement: true; sortObjects: true; physicallyCorrectLights: true; alpha: false; webgl2: true; multiview: false;"
+        renderer="
+            antialias: true;
+            colorManagement: true;
+            sortObjects: true;
+            physicallyCorrectLights: true;
+            alpha: false;
+            webgl2: true;
+            multiview: false;
+            forceWebVR: true;"
         shadow="type: pcfsoft"
         networked-scene="adapter: janus; audio: true; debug: true; connectOnLoad: false;"
         mute-mic="eventSrc: a-scene; toggleEvents: action_mute"
@@ -59,6 +51,7 @@
         personal-space-bubble="debug: false;"
         rotate-selected-object
         environment-map
+        set-max-resolution
     >
         <a-assets>
             <img id="presence-count" crossorigin="anonymous" src="./assets/hud/presence-count.png">
@@ -66,7 +59,35 @@
             <img id="button" crossorigin="anonymous" src="./assets/hud/button.9.png">
 
             <a-asset-item id="drawing-pen" response-type="arraybuffer" src="./assets/models/DrawingPen.glb"></a-asset-item>
+            <a-asset-item id="spawn-point" response-type="arraybuffer" src="./assets/models/spawn-point.glb"></a-asset-item>
 
+            <template id="template-waypoint-avatar">
+                <a-entity waypoint></a-entity>
+            </template>
+
+            <template id="occupiable-waypoint-icon">
+                <a-entity
+                    is-remote-hover-target
+                    class="occupiable-waypoint-icon"
+                    tags="singleActionButton: true"
+                    sprite="name: spawn-point.png">
+                </a-entity>
+            </template>
+            <template id="teleport-waypoint-icon">
+                <a-entity
+                    is-remote-hover-target
+                    class="teleport-waypoint-icon"
+                    tags="singleActionButton: true"
+                    sprite="name: spawn-point.png">
+                </a-entity>
+            </template>
+            <template id="waypoint-preview-avatar-template">
+                <a-entity
+                    overwrite-raycast-as-noop
+                    class="waypoint-preview-avatar"
+                    gltf-model-plus="inflate: true; src: #spawn-point;">
+                </a-entity>
+            </template>
             <template id="remote-avatar">
                 <a-entity networked-avatar ik-root player-info matrix-auto-update visible="false">
                     <a-entity class="camera" matrix-auto-update></a-entity>
@@ -357,6 +378,51 @@
                                 <a-entity
                                     sprite
                                     icon-button="image: scale-action.png; hoverImage: scale-action.png"
+                                    scale="0.165 0.165 0.165"
+                                    position="0 0 0.001"
+                                ></a-entity>
+                            </a-entity>
+                        </a-entity>
+                    </a-entity>
+                </a-entity>
+            </template>
+
+            <template id="interactable-emoji-media">
+                <a-entity
+                    class="interactable"
+                    emoji
+                    body-helper="type: dynamic; mass: 1; collisionFilterGroup: 1; collisionFilterMask: 15;"
+                    owned-object-limiter="counter: #emoji-counter"
+                    owned-object-cleanup-timeout="counter: #emoji-counter; ttl: 3;"
+                    set-unowned-body-kinematic
+                    is-remote-hover-target
+                    tags="isHandCollisionTarget: true; isHoldable: true; offersHandConstraint: true; offersRemoteConstraint: true; inspectable: true;"
+                    destroy-at-extreme-distances
+                    scalable-when-grabbed
+                    floaty-object="modifyGravityOnRelease: true; autoLockOnLoad: true;"
+                    set-yxz-order
+                    matrix-auto-update
+                    position-at-box-shape-border__freeze="target:.freeze-menu;"
+                    hoverable-visuals
+                >
+                    <a-entity
+                        class="particle-emitter"
+                        particle-emitter="particleCount: 0"
+                        scale="0.25 0.25 0.25"
+                        position="0 0.25 -0.01"
+                    ></a-entity>
+                    <a-entity class="ui interactable-ui">
+                        <a-entity class="freeze-menu" visibility-while-frozen="withinDistance: 100; withPermission: spawn_and_move_media; visibleIfOwned: false;">
+                            <a-entity
+                                mixin="rounded-button"
+                                is-remote-hover-target
+                                tags="singleActionButton: true;"
+                                hide-when-pinned-and-forbidden="whenPinned: true"
+                                remove-networked-object-button
+                                position="0 -0.375 0.01">
+                                <a-entity
+                                    sprite="name: remove-action.png"
+                                    icon-button="image: remove-action.png; hoverImage: remove-action.png"
                                     scale="0.165 0.165 0.165"
                                     position="0 0 0.001"
                                 ></a-entity>
@@ -771,15 +837,6 @@
                     opacity: 1.0;
                     src: #button"
             ></a-mixin>
-
-            <a-mixin id="emoji-button"
-                is-remote-hover-target
-                visibility-while-frozen="requireHoverOnNonMobile: false"
-                sprite
-                position="0.0 0 0.005"
-                tags="singleActionButton: true;"
-                material="alphaTest: 0.1;"
-            ></a-mixin>
         </a-assets>
 
         <!-- HACK - We use this object to trigger initial batch preparation -->
@@ -790,9 +847,11 @@
 
         <a-entity id="pen-counter" networked-counter="max: 10;"></a-entity>
 
+        <a-entity id="emoji-counter" networked-counter="max: 2;"></a-entity>
+
         <a-entity id="camera-counter" networked-counter="max: 1;"></a-entity>
 
-        <a-entity id="drawing-manager" drawing-manager></a-entity>
+        <a-entity id="drawing-manager" drawing-manager="penSpawner: #pen-spawner"></a-entity>
 
         <a-entity
             id="right-cursor-controller"
@@ -812,7 +871,7 @@
             segments-height="9"
             body-helper="type: kinematic; disableCollision: true; collisionFilterGroup: 8; collisionFilterMask: 0; scaleAutoUpdate: false; activationState: disable_deactivation;"
             shape-helper="type: sphere; sphereRadius: 0.02; fit: manual;"
-        >
+            scale-in-screen-space="baseScale: 0.10 0.10 0.10; addedScale: 0.4 0.4 0.4">
             <a-entity
                 sprite
                 icon-button="image: rotate-cursor.png"
@@ -831,7 +890,7 @@
             segments-height="9"
             body-helper="type: kinematic; disableCollision: true; collisionFilterGroup: 8; collisionFilterMask: 0; scaleAutoUpdate: false; activationState: disable_deactivation;"
             shape-helper="type: sphere; sphereRadius: 0.02; fit: manual;"
-        >
+            scale-in-screen-space="baseScale: 0.10 0.10 0.10; addedScale: 0.4 0.4 0.4">
             <a-entity
                 sprite
                 icon-button="image: rotate-cursor.png"
@@ -845,10 +904,9 @@
         <!-- Avatar Rig -->
         <a-entity
             id="avatar-rig"
-            spawn-controller="loadedEvent: entered; target: #avatar-rig"
-            character-controller="pivot: #avatar-pov-node"
             ik-root
             player-info
+            set-yxz-order
             periodic-full-syncs
             visible="false"
         >
@@ -949,7 +1007,7 @@
                 rotation
                 pitch-yaw-rotator
                 set-yxz-order
-                matrix-auto-update
+                position="0 1.6 0"
             >
                 <a-entity
                     id="gaze-teleport"
@@ -959,34 +1017,7 @@
                 <a-entity id="stats" stats-plus="false" position="0 0 -1"></a-entity>
             </a-entity>
 
-            <a-entity
-                offset-relative-to="target: #viewing-camera; offset: 0 -0.5 -1.5; on: stateadded; lookAt: true"
-                vr-mode-toggle-visibility
-                vr-mode-toggle-class="class: ui"
-                emoji-hud>
-                <a-entity
-                    is-remote-hover-target
-                    visibility-while-frozen="requireHoverOnNonMobile: false"
-                    slice9="
-                        color: #000000;
-                        width: 1.5;
-                        height: 0.2;
-                        left: 64;
-                        top: 64;
-                        right: 66;
-                        bottom: 66;
-                        opacity: 0.2;
-                        src: #button;">
-                </a-entity>
-                <a-entity mixin="emoji-button" data-emoji="smile"></a-entity>
-                <a-entity mixin="emoji-button" data-emoji="happy"></a-entity>
-                <a-entity mixin="emoji-button" data-emoji="surprise"></a-entity>
-                <a-entity mixin="emoji-button" data-emoji="disgust"></a-entity>
-                <a-entity mixin="emoji-button" data-emoji="angry"></a-entity>
-                <a-entity mixin="emoji-button" data-emoji="sad"></a-entity>
-                <a-entity mixin="emoji-button" data-emoji="eww"></a-entity>
-                <a-entity mixin="emoji-button" data-emoji="hearts"></a-entity>
-            </a-entity>
+            <a-entity emoji-hud="camera: #avatar-pov-node;"></a-entity>
 
             <a-entity
                 id="player-left-controller"
@@ -1068,12 +1099,12 @@
         </a-entity>
 
         <a-entity
+            id="pen-spawner"
             action-to-event="path: /actions/spawnPen; event: spawn_pen; withPermission: spawn_drawing"
             super-spawner="
                 template: #interactable-pen;
                 spawnEvent: spawn_pen;
                 animateFromCursor: true;
-                useCustomSpawnScale: true;
                 spawnScale: 0.5, 0.5, 0.5;
                 "
         ></a-entity>

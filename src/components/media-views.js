@@ -14,8 +14,10 @@ import pdfjs from "pdfjs-dist";
 import { applyPersistentSync } from "../utils/permissions-utils";
 
 // Using external CDN to reduce build size
-pdfjs.GlobalWorkerOptions.workerSrc =
-  "https://assets-prod.reticulum.io/assets/js/pdfjs-dist@2.1.266/build/pdf.worker.js";
+if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+  pdfjs.GlobalWorkerOptions.workerSrc =
+    "https://assets-prod.reticulum.io/assets/js/pdfjs-dist@2.1.266/build/pdf.worker.js";
+}
 
 const ONCE_TRUE = { once: true };
 const TYPE_IMG_PNG = { type: "image/png" };
@@ -422,7 +424,11 @@ AFRAME.registerComponent("media-video", {
 
     // Volume is local, always update it
     if (this.audio) {
-      this.audio.gain.gain.value = this.data.volume;
+      const globalMediaVolume =
+        window.APP.store.state.preferences.globalMediaVolume !== undefined
+          ? window.APP.store.state.preferences.globalMediaVolume
+          : 100;
+      this.audio.gain.gain.value = (globalMediaVolume / 100) * this.data.volume;
     }
   },
 

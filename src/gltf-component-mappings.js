@@ -1,6 +1,5 @@
 import "./components/gltf-model-plus";
 import { getSanitizedComponentMapping } from "./utils/component-mappings";
-import { isHubsDestinationUrl } from "./utils/media-url-utils";
 import { TYPE, SHAPE, FIT } from "three-ammo/constants";
 const COLLISION_LAYERS = require("./constants").COLLISION_LAYERS;
 
@@ -84,7 +83,16 @@ AFRAME.GLTFModelPlus.registerComponent("visible", "visible", (el, componentName,
     el.setAttribute(componentName, componentData);
   }
 });
-AFRAME.GLTFModelPlus.registerComponent("spawn-point", "spawn-point");
+AFRAME.GLTFModelPlus.registerComponent("spawn-point", "spawn-point", el => {
+  el.setAttribute("waypoint", {
+    canBeSpawnPoint: true,
+    canBeOccupied: false,
+    canBeClicked: false,
+    willDisableMotion: false,
+    willDisableTeleporting: false,
+    willMaintainWorldUp: true
+  });
+});
 AFRAME.GLTFModelPlus.registerComponent("sticky-zone", "sticky-zone");
 AFRAME.GLTFModelPlus.registerComponent("nav-mesh", "nav-mesh", (el, _componentName, componentData) => {
   const nav = AFRAME.scenes[0].systems.nav;
@@ -102,6 +110,19 @@ AFRAME.GLTFModelPlus.registerComponent("nav-mesh", "nav-mesh", (el, _componentNa
 });
 
 AFRAME.GLTFModelPlus.registerComponent("pinnable", "pinnable");
+
+AFRAME.GLTFModelPlus.registerComponent("waypoint", "waypoint", (el, componentName, componentData, components) => {
+  if (componentData.canBeOccupied) {
+    el.setAttribute("networked", {
+      template: "#template-waypoint-avatar",
+      attachTemplateToLocal: false,
+      owner: "scene",
+      persistent: true,
+      networkId: components.networked.id
+    });
+  }
+  el.setAttribute("waypoint", componentData);
+});
 
 AFRAME.GLTFModelPlus.registerComponent("media", "media", (el, componentName, componentData) => {
   if (componentData.id) {
@@ -136,13 +157,11 @@ AFRAME.GLTFModelPlus.registerComponent("media", "media", (el, componentName, com
   }
 });
 
-function mediaInflator(el, componentName, componentData, components) {
+async function mediaInflator(el, componentName, componentData, components) {
   let isControlled = true;
 
   if (components.networked) {
-    // TODO: When non-hubs links can be traversed, make all link components controlled so you can open them.
-    isControlled =
-      componentData.controls || isHubsDestinationUrl(componentData.src) || isHubsDestinationUrl(componentData.href);
+    isControlled = componentData.controls || componentName === "link";
 
     const hasVolume = componentName === "video" || componentName === "audio";
     const templateName = isControlled || hasVolume ? "#static-controlled-media" : "#static-media";
