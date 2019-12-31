@@ -314,7 +314,6 @@ module.exports = (env, argv) => ({
     }),
     new CopyWebpackPlugin([
       {
-<<<<<<< HEAD
         from: "src/assets/images/favicon.ico",
         to: "favicon.ico"
       }
@@ -333,8 +332,6 @@ module.exports = (env, argv) => ({
     ]),
     new CopyWebpackPlugin([
       {
-=======
->>>>>>> master
         from: "src/hub.service.js",
         to: "hub.service.js"
       }
