@@ -227,7 +227,7 @@ class HomeRoot extends Component {
                 )}
               </div>
             </div>
-            <div className={styles.heroContent} style={{ backgroundImage: configs.image("home_background", true) }}>
+            <div className={styles.heroContent}>
               {!this.props.hideHero &&
                 (this.props.favoriteHubsResult &&
                 this.props.favoriteHubsResult.entries &&
@@ -390,7 +390,7 @@ class HomeRoot extends Component {
         <div className={styles.container}>
           <div className={styles.logoContainer}>
             <div className={classNames([styles.logo, styles.logoMargin])}>
-              <img src={configs.image("bp_logo", bpLogo)} />
+              <img src={configs.image("logo")} />
             </div>
           </div>
         </div>
@@ -415,7 +415,7 @@ class HomeRoot extends Component {
         <div className={styles.container}>
           <div className={styles.logoContainer}>
             <div className={styles.logo}>
-              <img src={configs.image("bp_logo", bpLogo)} />
+              <img src={configs.image("logo")} />
             </div>
           </div>
           <div className={styles.blurb}>
