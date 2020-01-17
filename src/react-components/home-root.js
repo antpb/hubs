@@ -25,8 +25,6 @@ import AuthChannel from "../utils/auth-channel";
 import styles from "../assets/stylesheets/index.scss";
 
 import AuthDialog from "./auth-dialog.js";
-import JoinUsDialog from "./join-us-dialog.js";
-import ReportDialog from "./report-dialog.js";
 import SignInDialog from "./sign-in-dialog.js";
 import MediaTiles from "./media-tiles";
 
@@ -44,7 +42,6 @@ class HomeRoot extends Component {
     authToken: PropTypes.string,
     authPayload: PropTypes.string,
     authOrigin: PropTypes.string,
-    report: PropTypes.bool,
     installEvent: PropTypes.object,
     hideHero: PropTypes.bool,
     showAdmin: PropTypes.bool,
@@ -80,9 +77,6 @@ class HomeRoot extends Component {
       this.showSignInDialog(false);
     }
     this.loadHomeVideo();
-    if (this.props.report) {
-      this.showReportDialog();
-    }
   }
 
   async verifyAuth() {
@@ -120,10 +114,6 @@ class HomeRoot extends Component {
   closeDialog = () => {
     this.setState({ dialog: null });
   };
-
-  showJoinUsDialog = () => this.showDialog(JoinUsDialog);
-
-  showReportDialog = () => this.showDialog(ReportDialog);
 
   showSignInDialog = (closable = true) => {
     let messageId = "sign-in.prompt";
@@ -284,29 +274,19 @@ class HomeRoot extends Component {
               <div className={styles.links}>
                 <div className={styles.top}>
                   <IfFeature name="show_join_us_dialog">
-                    <a
-                      className={styles.link}
-                      rel="noopener noreferrer"
-                      href="#"
-                      onClick={this.onLinkClicked(this.showJoinUsDialog)}
-                    >
+                    <a className={styles.link} rel="noopener noreferrer" href="/#/join-us">
                       <FormattedMessage id="home.join_us" />
                     </a>
                   </IfFeature>
                   <IfFeature name="show_issue_report_link">
                     {configs.feature("show_issue_report_dialog") ? (
-                      <a
-                        className={styles.link}
-                        rel="noopener noreferrer"
-                        href="#"
-                        onClick={this.onLinkClicked(this.showReportDialog)}
-                      >
+                      <a className={styles.link} rel="noopener noreferrer" href="/#/report">
                         <FormattedMessage id="home.report_issue" />
                       </a>
                     ) : (
                       <a
                         className={styles.link}
-                        href={configs.link("issue_report", "/?report")}
+                        href={configs.link("issue_report", "/#/report")}
                         target="_blank"
                         rel="noreferrer noopener"
                       >
