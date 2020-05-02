@@ -136,13 +136,21 @@ body {
   justify-content: center;
   position: relative;
   flex: 1;
-  background-size: cover;
+  background: rgb(192,0,255);
+  background: linear-gradient(90deg, rgba(192,0,255,1) 0%, rgba(104,0,255,1) 100%);
   padding: 1.5em;
 
   @media (max-width: 768px), (max-height: 480px) {
     padding: 0;
     padding-bottom: 64px;
     order: -1;
+  }
+
+  :local(.logoContainer) {
+    display: table-cell;
+    flex-direction: row;
+    justify-content: center;
+    position: relative;  
   }
 
   :local(.container) {
@@ -164,8 +172,6 @@ body {
 
     :local(.logo) {
       max-width: 250px;
-
-      align-self: flex-start;
       margin-left: -25px;
       margin-bottom: -12px;
 

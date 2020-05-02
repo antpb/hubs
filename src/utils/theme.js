@@ -11,7 +11,7 @@ const DEFAULT_COLORS = {
   "action-color-disabled": DEFAULT_ACTION_COLOR_LIGHT,
   "action-color-highlight": DEFAULT_ACTION_COLOR_LIGHT,
   "action-text-color": "#FFFFFF",
-  "action-subtitle-color": "#F0F0F0",
+  "action-subtitle-text-color": "#F0F0F0",
   "notice-background-color": "#2F80ED",
   "notice-text-color": "#FFFFFF",
   "favorited-color": "#FFC000"
@@ -25,11 +25,8 @@ function getThemeColor(name) {
 }
 
 waitForDOMContentLoaded().then(() => {
-  if (window.APP_CONFIG && window.APP_CONFIG.theme && window.APP_CONFIG.theme["dark-theme"]) {
-    document.body.classList.add("dark-theme");
-  } else {
-    document.body.classList.add("light-theme");
-  }
+  document.body.classList.add("dark-theme");
+
 
   const actionColor = getThemeColor("action-color");
   const actionHoverColor = getThemeColor("action-color-highlight");

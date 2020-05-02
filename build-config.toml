@@ -1,0 +1,14 @@
+[general]
+base_assets_path = 
+shortlink_domain = 
+reticulum_server = 
+thumbnail_server = 
+cors_proxy_server = 
+non_cors_proxy_domains = 
+sentry_dsn = 
+ga_tracking_id = 
+
+[deploy]
+type = "s3"
+target = 
+region = "us-west-1"

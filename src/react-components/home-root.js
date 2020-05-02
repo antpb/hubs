@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import axios from "axios";
 import PropTypes from "prop-types";
 import { IntlProvider, FormattedMessage, addLocaleData } from "react-intl";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -11,6 +12,7 @@ import { lang, messages } from "../utils/i18n";
 import { playVideoWithStopOnBlur } from "../utils/video-utils.js";
 import homeVideoWebM from "../assets/video/home.webm";
 import homeVideoMp4 from "../assets/video/home.mp4";
+import bpLogo from "../assets/images/bp.png";
 import discordLogoSmall from "../assets/images/discord-logo-small.png";
 import classNames from "classnames";
 import { isLocalClient, createAndRedirectToNewHub, connectToReticulum } from "../utils/phoenix-utils";
@@ -55,6 +57,7 @@ class HomeRoot extends Component {
   };
 
   state = {
+    data: null,
     dialog: null,
     signedIn: null
   };
@@ -66,6 +69,11 @@ class HomeRoot extends Component {
   }
 
   componentDidMount() {
+    axios.get(`https://broken.place/wp-json/wp/v2/pages/2891`)
+    .then(res => {
+      this.state.data = res.data.content.rendered;
+    })
+
     if (this.props.authVerify) {
       this.showAuthDialog(true, false);
 
@@ -166,7 +174,7 @@ class HomeRoot extends Component {
     };
   };
 
-  render() {
+  render() {  
     const mainContentClassNames = classNames({
       [styles.mainContent]: true,
       [styles.noninteractive]: !!this.state.dialog
@@ -239,7 +247,7 @@ class HomeRoot extends Component {
                 )}
               </div>
             </div>
-            <div className={styles.heroContent} style={{ backgroundImage: configs.image("home_background", true) }}>
+            <div className={styles.heroContent}>
               {!this.props.hideHero &&
                 (this.props.featuredRooms && this.props.featuredRooms.length > 0
                   ? this.renderFeaturedRoomsHero()
@@ -344,7 +352,7 @@ class HomeRoot extends Component {
                       <FormattedMessage id="home.privacy_notice" />
                     </a>
                   </IfFeature>
-                  <IfFeature name="show_company_logo">
+                  <IfFeature name="show_company_logo">                    
                     <img className={styles.companyLogo} src={configs.image("company_logo")} />
                   </IfFeature>
                 </div>
@@ -398,8 +406,10 @@ class HomeRoot extends Component {
     return [
       <div className={styles.heroPanel} key={1}>
         <div className={styles.container}>
-          <div className={classNames([styles.logo, styles.logoMargin])}>
-            <img src={configs.image("logo")} />
+          <div className={styles.logoContainer}>
+            <div className={classNames([styles.logo, styles.logoMargin])}>
+              <img src={configs.image("logo")} />
+            </div>
           </div>
         </div>
         <div className={styles.ctaButtons}>
@@ -425,11 +435,17 @@ class HomeRoot extends Component {
     return (
       <div className={styles.heroPanel}>
         <div className={styles.container}>
-          <div className={styles.logo}>
-            <img src={configs.image("logo")} />
+          <div className={styles.logoContainer}>
+            <div className={styles.logo}>
+              <img src={configs.image("logo")} />
+            </div>
           </div>
           <div className={styles.blurb}>
             <FormattedMessage id="app-description" />
+          <div
+                    dangerouslySetInnerHTML={{
+                    __html: this.state.data,
+                  }}></div>
           </div>
         </div>
         <div className={styles.ctaButtons}>
