@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import axios from "axios";
 import PropTypes from "prop-types";
 import { IntlProvider, FormattedMessage, addLocaleData } from "react-intl";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -55,6 +56,7 @@ class HomeRoot extends Component {
   };
 
   state = {
+    data: null,
     dialog: null,
     signedIn: null
   };
@@ -66,6 +68,13 @@ class HomeRoot extends Component {
   }
 
   componentDidMount() {
+    axios.get(`https://broken.place/wp-json/wp/v2/pages/2891`)
+    .then(res => {
+      this.setState({ 
+        data: res.data.content.rendered
+      });
+    })
+
     if (this.props.authVerify) {
       this.showAuthDialog(true, false);
 
@@ -400,6 +409,11 @@ class HomeRoot extends Component {
         <div className={styles.container}>
           <div className={classNames([styles.logo, styles.logoMargin])}>
             <img src={configs.image("logo")} />
+            <div
+                    dangerouslySetInnerHTML={{
+                    __html: this.state.data,
+                  }}>
+            </div>
           </div>
         </div>
         <div className={styles.ctaButtons}>
@@ -430,6 +444,11 @@ class HomeRoot extends Component {
           </div>
           <div className={styles.blurb}>
             <FormattedMessage id="app-description" />
+	        <div
+                    dangerouslySetInnerHTML={{
+                    __html: this.state.data,
+                  }}>
+                  </div>
           </div>
         </div>
         <div className={styles.ctaButtons}>
